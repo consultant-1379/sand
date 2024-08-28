@@ -1,0 +1,314 @@
+#!/usr/bin/env groovy
+
+/* IMPORTANT:
+ *
+ * In order to make this pipeline work, the following configuration on Jenkins is required:
+ * - slave with a specific label (see pipeline.agent.label below)",
+ * - credentials plugin should be installed and have the secrets with the following names:
+ *   + lciadm100credentials (token to access Artifactory)
+ */
+
+def defaultBobImage = 'armdocker.rnd.ericsson.se/sandbox/adp-staging/adp-cicd/bob.2.0:1.5.2-0'
+def bob = new BobCommand()
+        .bobImage(defaultBobImage)
+        .envVars([ISO_VERSION: '${ISO_VERSION}'])
+        .needDockerSocket(true)
+        .toString()
+def failedStage = ''
+def emailReport() {
+    def Repo_Mail = ""
+    def mail_list = ["eric-enmsg-access-control":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-amos":"PDLENMOUTS@pdl.internal.ericsson.com","eric-enmsg-cellserv":"PDLNMFEATU@pdl.internal.ericsson.com","eric-enmsg-autoprovisioning":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-cmevents":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-cmutilities":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-com-ecim-mscm":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-comecimpolicy":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-dc-history":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-domain-proxy-coordinator":"EricssonHyderabad.ENMMisty@tcs.com","eric-enm-dps-schemamgt":"PDLENIGMAE@pdl.internal.ericsson.com","eric-enmsg-dlms":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-dpmediation":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-eventbasedclient":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-element-manager":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-flowautomation":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-fm-alarm-processing":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-fm-history":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-fm-service":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-general-scripting":"PDLENMOUTS@pdl.internal.ericsson.com","eric-enmsg-gossiprouter-cache":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-gossiprouter-remoting":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-identity-mgmt-service":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-import-export-service":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-ip-service-management":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-jmsserver":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-kpi-calc-serv":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-kpi-service":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-lcmservice":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-medrouter":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-msap":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-msapgfm":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-mscm":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-mscmapg":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-mscmip":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-msfm":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-mskpirt":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-msnetlog":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-mspm":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-mspmip":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-mssnmpfm":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-mssnmpcm":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-nbi-bnsi-fm":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-nb-alarm-irp-agent-corba":"EricssonHyderabad.ENMGalaxy@tcs.com","eric-enmsg-nb-fm-snmp":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-nodecli":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-nedo-serv":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-networkexplorer":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-node-plugins":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-openidm":"PDLNMFEATU@pdl.internal.ericsson.com","eric-enmsg-pmservice":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-pki-ra-service":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-pmic-router-policy":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-sso":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-openidm":"PDLNMFEATU@pdl.internal.ericsson.com","eric-enmsg-sps-service":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-supervisionclient":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-sa-service":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-security-service":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-sentinel":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-shm-core-service":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-shmservice":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-smrs-service":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-uiservice":"PDLTEAMTOT@pdl.internal.ericsson.com","eric-enmsg-visinaming-nb":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-visinaming-sb":"EricssonHyderabad.ENMMisty@tcs.com","eric-enmsg-vault-service":"PDLNMFEATU@pdl.internal.ericsson.com","eric-enmsg-web-push-service":"PDLTEAMTOT@pdl.internal.ericsson.com"]
+        mail_list.each { each_repo,each_email ->
+            if (each_repo == env.REPO.split('/').last()) {
+                Repo_Mail = each_email;
+            }
+         };
+         if (Repo_Mail != "") {
+                try {
+                    mail to: "${GERRIT_CHANGE_OWNER_EMAIL},${GERRIT_PATCHSET_UPLOADER_EMAIL},${Repo_Mail}",
+                    subject: "Failed Pipeline: ${currentBuild.fullDisplayName}",
+                    body: "Failure on ${env.BUILD_URL}"
+                } catch( err ){
+                     echo "$err"
+                }
+           }
+          if (Repo_Mail == "") {
+              try {
+                    mail to: "${GERRIT_CHANGE_OWNER_EMAIL},${GERRIT_PATCHSET_UPLOADER_EMAIL}",
+                    subject: "Failed Pipeline: ${currentBuild.fullDisplayName}",
+                    body: "Failure on ${env.BUILD_URL}"
+                } catch( err ){
+                     echo "$err"
+                }
+           }
+}
+
+pipeline {
+    agent {
+        label 'Cloud-Native'
+    }
+    parameters {
+        string(name: 'ISO_VERSION', defaultValue: '0.0.0', description: 'The ENM ISO version (e.g. 1.65.77)')
+    }
+    stages {
+        stage('Inject Credential Files') {
+            steps {
+                withCredentials([file(credentialsId: 'lciadm100-docker-auth', variable: 'dockerConfig')]) {
+                    // sh "install -m 600 ${dockerConfig} ${HOME}/.docker/config.json"
+                    sh '''    
+                        if [ ! -f ${HOME}/.docker/config.json ]; then
+                            echo "File not found!  Installing permission change file"
+                            install -m 600 ${dockerConfig} ${HOME}/.docker/config.json
+                        else
+                            echo "Config.json file exists . Moving to next stage"
+                        fi
+                    '''
+                }
+            }
+        }
+        stage('Checkout Cloud-Native SG Git Repository') {
+            steps {
+                script {
+                    if (env.GERRIT_CHANGE_NUMBER) {
+                        checkout changelog: true, \
+                        scm: [$class: 'GitSCM', \
+                        branches: [[name: "$GERRIT_REFSPEC"]], \
+                        doGenerateSubmoduleConfigurations: false, \
+                        extensions: [[$class: 'BuildChooserSetting', buildChooser: [$class: 'GerritTriggerBuildChooser']]], \
+                        submoduleCfg: [], \
+                        userRemoteConfigs: [[refspec: "${GERRIT_REFSPEC}", \
+                        url: "${GERRIT_MIRROR}/${GERRIT_PROJECT}"]]]
+                    } else {
+                        println "No GERRIT_CHANGE_NUMBER"
+                        git changelog: true, poll: false, url: '${GERRIT_MIRROR}/${REPO}'
+                    }
+                }
+            }
+        }
+        stage('Checkout SG RPM Git Repository') {
+            steps {
+                script {
+                    if (env.REPO.split('/').last() == "eric-enmsg-auto-id-solr" || env.REPO.split('/').last() == "eric-enmsg-amos" || env.REPO.split('/').last() == "eric-enmsg-general-scripting") {
+                        sgcontainer_repo = "${REPO}".split('enmsg-').last()
+                        if (sgcontainer_repo == "amos") {
+                            sgcontainer_repo = "AMOS"
+                        }
+                        dir("${sgcontainer_repo}") {
+                            git branch: 'master',
+                                credentialsId: 'enmadm100_private_key',
+                                url: '${GERRIT_MIRROR}/'+'OSS/com.ericsson.oss.servicegroupcontainers/'+"${sgcontainer_repo}"
+                        }
+                     }
+                }
+            }
+        }
+        stage('Python unit tests for k8shealthcheck.py') {
+            steps {
+                script{
+                    if ( env.REPO.split('/').last() == "eric-enm-troubleshooting-utils" ) {
+                     sh "echo 'Preparing venv ...' ; \
+                         python3 -m pip install --user virtualenv && python3 -m venv env;source env/bin/activate; \
+                         python3 -m pip install --upgrade pip ; \
+                         pip3 install -r ${WORKSPACE}/image_content/requirements.txt ; \
+                         pip3 install -r ${WORKSPACE}/test/requirements-dev.txt ; "
+
+                     sh "source env/bin/activate ; \
+                         echo 'Starting the coding standard checking...' ; \
+                         python3 -m pylint -ry ${WORKSPACE}/image_content/k8shealthcheck/k8shealthcheck.py > coding_standard_errors.txt; \
+                         echo 'File coding_standard_errors.txt is created...'"
+
+                     sh "source env/bin/activate ; \
+                         if [ -d coverage_result ]; then rm -rf coverage_result; fi; \
+                         echo 'Starting the code coverage checking...' ; \
+                         python3 -m coverage run -m unittest ${WORKSPACE}/test/k8shealthcheck/testk8shealthcheck.py; \
+                         python3 -m coverage html -d coverage_result ${WORKSPACE}/image_content/k8shealthcheck/k8shealthcheck.py ; \
+                         python3 -m coverage report --fail-under=95 ${WORKSPACE}/image_content/k8shealthcheck/k8shealthcheck.py ; \
+                         echo 'Coverage report was created' ; \
+                         deactivate;"
+
+                         archiveArtifacts "coding_standard_errors.txt"
+                         archiveArtifacts "coverage_result/*"
+                   }
+               }
+            }
+            post {
+                failure {
+                    script {
+                        ret_coding_std_err =  sh(script: "if [ -f coding_standard_errors.txt ]; then echo 'coding_standard_errors was created'; exit 0; else echo 'coding_standard_errors was not created'; exit 1; fi", returnStatus: true )
+                        if (ret_coding_std_err==0){
+                            archiveArtifacts "coding_standard_errors.txt"
+                        }
+                        ret_coverage_result =sh(script: "if [ -d coverage_result ]; then echo 'coverage_result was created. Please review the details from image_content_k8shealthcheck_k8shealthcheck_py.html'; exit 0; else echo 'coverage_result was not created'; exit 1; fi", returnStatus: true )
+                        if (ret_coverage_result == 0 ){
+                            archiveArtifacts "coverage_result/*"
+                        }
+                        failedStage = env.STAGE_NAME
+                    }
+                }
+            }
+        }
+        stage('Helm Dep Up ') {
+            steps {
+                sh "${bob} helm-dep-up"
+            }
+            post {
+                failure {
+                    script {
+                        failedStage = env.STAGE_NAME
+                    }
+                }
+            }
+        }
+        stage('Merge values files') {
+            steps{
+                 script {
+                     appconfig_values = sh (script: "ls ${WORKSPACE}/chart/${CHART_DIR}/appconfig/ | grep values.yaml", returnStatus: true)
+                     if (appconfig_values == 0) {
+                          sh("${bob} merge-values-files-with-appconfig")
+                     } else {
+                          sh("${bob} merge-values-files")
+                     }
+                     sh '''
+                         if git status | grep 'values.yaml' > /dev/null; then
+                            git add chart/${CHART_DIR}/values.yaml
+                            git commit -m "NO JIRA - Merging Values.yaml file with common library values.yaml"
+                         fi
+                     '''
+                }
+            }
+            post {
+                failure {
+                    script {
+                        failedStage = env.STAGE_NAME
+                    }
+                }
+            }
+        }
+        stage('Helm Lint') {
+            steps {
+                sh "${bob} lint-helm"
+            }
+            post {
+                failure {
+                    script {
+                        failedStage = env.STAGE_NAME
+                    }
+                }
+            }
+        }
+        stage('Linting Dockerfile') {
+            steps {
+                sh "${bob} lint-dockerfile"
+                archiveArtifacts '*dockerfilelint.log'
+            }
+            post {
+                failure {
+                    script {
+                        failedStage = env.STAGE_NAME
+                    }
+                }
+            }
+        }
+        stage('ADP Helm Design Rule Check') {
+            steps {
+                sh "${bob} test-helm || true"
+                archiveArtifacts 'design-rule-check-report.*'
+            }
+            post {
+                failure {
+                    script {
+                        failedStage = env.STAGE_NAME
+                    }
+                }
+            }
+        }
+        stage('Build Image and Chart') {
+            steps {
+                sh "${bob} generate-new-version build-helm build-image-with-all-tags-internal"
+            }
+            post {
+                failure {
+                    script {
+                         failedStage = env.STAGE_NAME
+                         sh "${bob} remove-image-with-all-tags-internal"
+                     }
+                 }
+            }
+        }
+        stage('Publish Images to Artifactory') {
+            steps {
+                sh "${bob} push-image-with-all-tags-internal"
+            }
+            post {
+                failure {
+                    script {
+                        failedStage = env.STAGE_NAME
+                        sh "${bob} remove-image-with-all-tags-internal"
+                    }
+                }
+                always {
+                    sh "${bob} remove-image-with-all-tags-internal"
+                }
+            }
+        }
+        stage('Generate ADP Parameters') {
+            steps {
+                sh "${bob} generate-output-parameters-internal-stage"
+                archiveArtifacts 'artifact.properties'
+            }
+            post {
+                failure {
+                    script {
+                        failedStage = env.STAGE_NAME
+                    }
+                }
+            }
+        }
+    }
+    post {
+        failure {
+            script {
+                emailReport()
+            }
+        }
+    }
+}
+
+// More about @Builder: http://mrhaki.blogspot.com/2014/05/groovy-goodness-use-builder-ast.html
+import groovy.transform.builder.Builder
+import groovy.transform.builder.SimpleStrategy
+
+@Builder(builderStrategy = SimpleStrategy, prefix = '')
+class BobCommand {
+    def bobImage = 'bob.2.0:latest'
+    def envVars = [:]
+    def needDockerSocket = false
+
+    String toString() {
+        def env = envVars
+                .collect({ entry -> "-e ${entry.key}=\"${entry.value}\"" })
+                .join(' ')
+
+        def cmd = """\
+            |docker run
+            |--init
+            |--rm
+            |--workdir \${PWD}
+            |--user \$(id -u):\$(id -g)
+            |-v \${PWD}:\${PWD}
+            |-v /home/enmadm100/doc_push/group:/etc/group:ro
+            |-v /home/enmadm100/doc_push/passwd:/etc/passwd:ro
+            |-v \${HOME}/.m2:\${HOME}/.m2
+            |-v \${HOME}/.docker:\${HOME}/.docker
+            |${needDockerSocket ? '-v /var/run/docker.sock:/var/run/docker.sock' : ''}
+            |${env}
+            |\$(for group in \$(id -G); do printf ' --group-add %s' "\$group"; done)
+            |--group-add \$(stat -c '%g' /var/run/docker.sock)
+            |${bobImage}
+            |"""
+        return cmd
+                .stripMargin()           // remove indentation
+                .replace('\n', ' ')      // join lines
+                .replaceAll(/[ ]+/, ' ') // replace multiple spaces by one
+    }
+}
